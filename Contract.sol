@@ -625,7 +625,7 @@ contract MWA is ERC20 {
             sender != burnAddress &&
             sender != mAdrress &&
             sender != owner() &&
-			recipient != address(this) &&
+	    recipient != address(this) &&
             recipient != burnAddress && 
             recipient != mAdrress && 
             recipient != owner()
@@ -673,15 +673,15 @@ contract MWA is ERC20 {
 	
 	function farmingReward(address recipient, uint256 amount) external returns (bool) {
 	    require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != farmingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
+       	    require(amount != farmingMaxAmount, "OUT OF AMOUNT");
+            require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
+            require(amount > 0, "INVALID AMOUNT");
 
-        farmReward = farmReward.add(amount);
-        if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = farmReward.sub(farmingMaxAmount);
-            _mint(recipient, availableReward);
+            farmReward = farmReward.add(amount);
+            if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
+            else {
+              uint256 availableReward = farmReward.sub(farmingMaxAmount);
+              _mint(recipient, availableReward);
             farmReward = farmingMaxAmount;
         }
         return true;
@@ -689,17 +689,17 @@ contract MWA is ERC20 {
     
     function trainingAmount(address recipient, uint256 amount) external returns (bool) {
 	    require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != trainingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
+            require(amount != trainingMaxAmount, "OUT OF AMOUNT");
+            require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
+            require(amount > 0, "INVALID AMOUNT");
 
-        trainReward = trainReward.add(amount);
-        if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = trainReward.sub(trainingMaxAmount);
-            _mint(recipient, availableReward);
-            trainReward = trainingMaxAmount;
-        }
+            trainReward = trainReward.add(amount);
+            if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
+            else {
+               uint256 availableReward = trainReward.sub(trainingMaxAmount);
+              _mint(recipient, availableReward);
+              trainReward = trainingMaxAmount;
+            }
         return true;
     }
 }
