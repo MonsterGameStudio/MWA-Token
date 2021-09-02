@@ -1,5 +1,3 @@
-
-
 /**
  **********************************MONSTERWAR******************************
  * Website:      https://monsterwar.io/                                   *
@@ -597,10 +595,7 @@ contract MWA is ERC20 {
     address public mAdrress;
     address public burnAddress;
     
-    /**
-     * @notice Constructs the PantherToken contract.
-     */
-    constructor() public ERC20("MWA Token", "MWA") {
+    constructor() public ERC20("MonsterWar.io", "MWA") {
         _mint(_msgSender(), maxSupply.sub(monsterBattleMaxAmount).sub(farmingMaxAmount).sub(trainingMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0x10ED43C718714eb63d5aA57B78B54704E256024E
@@ -625,7 +620,7 @@ contract MWA is ERC20 {
             sender != burnAddress &&
             sender != mAdrress &&
             sender != owner() &&
-	    recipient != address(this) &&
+            recipient != address(this) &&
             recipient != burnAddress && 
             recipient != mAdrress && 
             recipient != owner()
@@ -672,34 +667,34 @@ contract MWA is ERC20 {
     }
 	
 	function farmingReward(address recipient, uint256 amount) external returns (bool) {
-	    require(msg.sender == mAdrress, "CALLER IS INVALID");
-       	    require(amount != farmingMaxAmount, "OUT OF AMOUNT");
-            require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-            require(amount > 0, "INVALID AMOUNT");
+        require(msg.sender == mAdrress, "CALLER IS INVALID");
+        require(amount != farmingMaxAmount, "OUT OF AMOUNT");
+        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
+        require(amount > 0, "INVALID AMOUNT");
 
-            farmReward = farmReward.add(amount);
-            if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
-            else {
-              uint256 availableReward = farmReward.sub(farmingMaxAmount);
-              _mint(recipient, availableReward);
+        farmReward = farmReward.add(amount);
+        if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
+        else {
+            uint256 availableReward = farmReward.sub(farmingMaxAmount);
+            _mint(recipient, availableReward);
             farmReward = farmingMaxAmount;
         }
         return true;
     }
     
     function trainingAmount(address recipient, uint256 amount) external returns (bool) {
-	    require(msg.sender == mAdrress, "CALLER IS INVALID");
-            require(amount != trainingMaxAmount, "OUT OF AMOUNT");
-            require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-            require(amount > 0, "INVALID AMOUNT");
+        require(msg.sender == mAdrress, "CALLER IS INVALID");
+        require(amount != trainingMaxAmount, "OUT OF AMOUNT");
+        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
+        require(amount > 0, "INVALID AMOUNT");
 
-            trainReward = trainReward.add(amount);
-            if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
-            else {
-               uint256 availableReward = trainReward.sub(trainingMaxAmount);
-              _mint(recipient, availableReward);
-              trainReward = trainingMaxAmount;
-            }
+        trainReward = trainReward.add(amount);
+        if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
+        else {
+            uint256 availableReward = trainReward.sub(trainingMaxAmount);
+            _mint(recipient, availableReward);
+            trainReward = trainingMaxAmount;
+        }
         return true;
     }
 }
