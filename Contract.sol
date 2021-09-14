@@ -595,7 +595,7 @@ contract MWA is ERC20 {
     address public mAdrress;
     address public burnAddress;
     
-    constructor() public ERC20("MonsterWar.io", "MWA") {
+    constructor() public ERC20("MonsterWar", "MWA") {
         _mint(_msgSender(), maxSupply.sub(monsterBattleMaxAmount).sub(farmingMaxAmount).sub(trainingMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0x10ED43C718714eb63d5aA57B78B54704E256024E
