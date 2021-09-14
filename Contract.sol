@@ -1,8 +1,4 @@
 /**
- *Submitted for verification at BscScan.com on 2021-09-02
-*/
-
-/**
  **********************************MONSTERWAR******************************
  * Website:      https://monsterwar.io/                                   *
  * Telegram ANN: https://t.me/MonsterWarANN                               *
@@ -590,7 +586,7 @@ contract MWA is ERC20 {
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
     uint256 public sellFeeRate = 5;
-    uint256 public buyFeeRate = 0;
+    uint256 public buyFeeRate = 2;
     
     uint256 public playToEarnReward;
     uint256 public farmReward;
@@ -599,7 +595,7 @@ contract MWA is ERC20 {
     address public mAdrress;
     address public burnAddress;
     
-    constructor() public ERC20("MonsterWar", "MWA") {
+    constructor() public ERC20("MonsterWar.io", "MWA") {
         _mint(_msgSender(), maxSupply.sub(monsterBattleMaxAmount).sub(farmingMaxAmount).sub(trainingMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0x10ED43C718714eb63d5aA57B78B54704E256024E
