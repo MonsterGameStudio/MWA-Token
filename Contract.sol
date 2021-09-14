@@ -408,6 +408,10 @@ abstract contract Ownable is Context {
     }
 }
 
+abstract contract BPContract{
+    function protect( address sender, address receiver, uint256 amount ) external virtual;
+}
+
 interface IERC20 {
 
     function totalSupply() external view returns (uint256);
@@ -579,24 +583,26 @@ contract ERC20 is Context, IERC20, Ownable {
 contract MWA is ERC20 {
     using SafeMath for uint256;
     uint256 public maxSupply = 1000 * 10**6 * 10**18;
-    uint256 public monsterBattleMaxAmount = 160 * 10**6 * 10**18;
-    uint256 public farmingMaxAmount = 140 * 10**6 * 10**18;
-    uint256 public trainingMaxAmount = 130 * 10**6 * 10**18;
-	
+    uint256 public play2EarnMaxAmount = 300 * 10**6 * 10**18;
+    
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
     uint256 public sellFeeRate = 5;
-    uint256 public buyFeeRate = 2;
+    uint256 public buyFeeRate = 0;
     
     uint256 public playToEarnReward;
     uint256 public farmReward;
     uint256 public trainReward;
-	
+    
     address public mAdrress;
     address public burnAddress;
-    
+
+    BPContract public BP;
+    bool public bpEnabled;
+    bool public BPDisabledForever = false;
+
     constructor() public ERC20("MonsterWar.io", "MWA") {
-        _mint(_msgSender(), maxSupply.sub(monsterBattleMaxAmount).sub(farmingMaxAmount).sub(trainingMaxAmount));
+        _mint(_msgSender(), maxSupply.sub(play2EarnMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0x10ED43C718714eb63d5aA57B78B54704E256024E
         );
@@ -609,8 +615,26 @@ contract MWA is ERC20 {
         burnAddress = owner();
     }
 
-    function _transfer( address sender, address recipient, uint256 amount ) internal virtual override {
-       uint256 transferFeeRate = recipient == uniswapV2Pair
+    function setBPAddrss(address _bp) external onlyOwner {
+        require(address(BP)== address(0), "Can only be initialized once");
+        BP = BPContract(_bp);
+    }
+
+    function setBpEnabled(bool _enabled) external onlyOwner {
+        bpEnabled = _enabled;
+    }
+
+    function setBotProtectionDisableForever() external onlyOwner{
+        require(BPDisabledForever == false);
+        BPDisabledForever = true;
+    }
+
+    function _transfer(address sender, address recipient, uint256 amount ) internal virtual override {
+        if (bpEnabled && !BPDisabledForever){
+            BP.protect(sender, recipient, amount); 
+        }
+
+        uint256 transferFeeRate = recipient == uniswapV2Pair
             ? sellFeeRate
             : (sender == uniswapV2Pair ? buyFeeRate : 0);
 
@@ -652,48 +676,16 @@ contract MWA is ERC20 {
     
     function battleReward(address winner, uint256 reward) external returns (bool){
         require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(playToEarnReward != monsterBattleMaxAmount, "OUT OF REWARD");
+        require(playToEarnReward != play2EarnMaxAmount, "OUT OF REWARD");
         require(winner != address(0), "INVALID ADDRESS");
         require(reward > 0, "INVALID REWARD");
 
         playToEarnReward = playToEarnReward.add(reward);
-        if (playToEarnReward <= monsterBattleMaxAmount) _mint(winner, reward);
+        if (playToEarnReward <= play2EarnMaxAmount) _mint(winner, reward);
         else {
-            uint256 availableReward = playToEarnReward.sub(monsterBattleMaxAmount);
+            uint256 availableReward = playToEarnReward.sub(play2EarnMaxAmount);
             _mint(winner, availableReward);
-            playToEarnReward = monsterBattleMaxAmount;
-        }
-        return true;
-    }
-	
-	function farmingReward(address recipient, uint256 amount) external returns (bool) {
-        require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != farmingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
-
-        farmReward = farmReward.add(amount);
-        if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = farmReward.sub(farmingMaxAmount);
-            _mint(recipient, availableReward);
-            farmReward = farmingMaxAmount;
-        }
-        return true;
-    }
-    
-    function trainingAmount(address recipient, uint256 amount) external returns (bool) {
-        require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != trainingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
-
-        trainReward = trainReward.add(amount);
-        if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = trainReward.sub(trainingMaxAmount);
-            _mint(recipient, availableReward);
-            trainReward = trainingMaxAmount;
+            playToEarnReward = play2EarnMaxAmount;
         }
         return true;
     }
