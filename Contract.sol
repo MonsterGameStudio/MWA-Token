@@ -591,6 +591,8 @@ contract MWA is ERC20 {
     
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
+
+    uint256 public maxFeeRate = 20;
     uint256 public sellFeeRate = 5;
     uint256 public buyFeeRate = 0;
 
@@ -668,7 +670,7 @@ contract MWA is ERC20 {
     }
     
     function setTransferFeeRate(uint256 _sellFeeRate, uint256 _buyFeeRate) public onlyOwner {
-        require(_sellFeeRate <= 20 && _buyFeeRate <= 20, "INVALID FEE RATE");
+        require(_sellFeeRate <= maxFeeRate && _buyFeeRate <= maxFeeRate, "INVALID FEE RATE");
         sellFeeRate = _sellFeeRate;
         buyFeeRate = _buyFeeRate;
     }
