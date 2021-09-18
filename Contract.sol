@@ -1,14 +1,18 @@
 /**
- **********************************MONSTERWAR******************************
- * Website:      https://monsterwar.io/                                   *
- * Telegram ANN: https://t.me/MonsterWarANN                               *
- * Telegram COM: https://t.me/MonsterWarBSC                               *
- * Twitter:      https://twitter.com/MonsterwarBSC                        *
- * Youtube:      https://www.youtube.com/channel/UCnnTkvYxmzcyOrPprKdfxYg *
- * Reddit:       https://www.reddit.com/user/MonsterWarBSC                *
- * Substrack:    https://monsterwar.substack.com/                         *
- * Email:        support@monsterwar.io                                    *
- **************************************************************************
+ **************************************************MONSTERWAR.IO**************************************************
+ *                       MONSTERWAR is a blockchain based gaming platform and marketplace.                       *
+ *  Inspired by the revolutionary play to earn trending, MONSTERWAR is the integration of blockchain and gaming. *
+ *****************************************************************************************************************
+ * Website:          https://monsterwar.io/                                                                      *
+ * Telegram ANN:     https://t.me/MonsterWarANN                                                                  *
+ * Telegram COM:     https://t.me/MonsterWarBSC                                                                  *
+ * Twitter:          https://twitter.com/MonsterwarBSC                                                           *
+ * Youtube:          https://www.youtube.com/channel/UCnnTkvYxmzcyOrPprKdfxYg                                    *
+ * Reddit:           https://www.reddit.com/user/MonsterWarBSC                                                   *
+ * Substrack:        https://monsterwar.substack.com/                                                            *
+ * Github:           https://github.com/MonsterGameStudio                                                        *
+ * Email:            support@monsterwar.io                                                                       *
+ *****************************************************************************************************************
 */
 
 pragma solidity >=0.6.12;
@@ -408,6 +412,10 @@ abstract contract Ownable is Context {
     }
 }
 
+abstract contract BPContract{
+    function protect( address sender, address receiver, uint256 amount ) external virtual;
+}
+
 interface IERC20 {
 
     function totalSupply() external view returns (uint256);
@@ -579,24 +587,29 @@ contract ERC20 is Context, IERC20, Ownable {
 contract MWA is ERC20 {
     using SafeMath for uint256;
     uint256 public maxSupply = 1000 * 10**6 * 10**18;
-    uint256 public monsterBattleMaxAmount = 160 * 10**6 * 10**18;
-    uint256 public farmingMaxAmount = 140 * 10**6 * 10**18;
-    uint256 public trainingMaxAmount = 130 * 10**6 * 10**18;
-	
+    uint256 public playToEarnMaxAmount = 300 * 10**6 * 10**18;
+    
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
+
+    uint256 public maxFeeRate = 20;
     uint256 public sellFeeRate = 5;
-    uint256 public buyFeeRate = 2;
-    
+    uint256 public buyFeeRate = 0;
+
     uint256 public playToEarnReward;
-    uint256 public farmReward;
-    uint256 public trainReward;
-	
+
     address public mAdrress;
-    address public burnAddress;
-    
+    address public devBurnAddress;
+
+    BPContract public BP;
+    bool public bpEnabled;
+    bool public BPDisabledForever = false;
+
+    mapping (address => bool) public blacklistSell ;
+    mapping (address => bool) public blacklistBuy ;
+
     constructor() public ERC20("MonsterWar", "MWA") {
-        _mint(_msgSender(), maxSupply.sub(monsterBattleMaxAmount).sub(farmingMaxAmount).sub(trainingMaxAmount));
+        _mint(_msgSender(), maxSupply.sub(playToEarnMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0x10ED43C718714eb63d5aA57B78B54704E256024E
         );
@@ -606,95 +619,111 @@ contract MWA is ERC20 {
         uniswapV2Router = _uniswapV2Router;
         _approve(address(this), address(uniswapV2Router), ~uint256(0));
         mAdrress = owner();
-        burnAddress = owner();
+        devBurnAddress = owner();
     }
 
-    function _transfer( address sender, address recipient, uint256 amount ) internal virtual override {
-       uint256 transferFeeRate = recipient == uniswapV2Pair
+    function setBPAddrss(address _bp) external onlyOwner {
+        require(address(BP)== address(0), "CAN ONLY BE INITIALIZED ONCE");
+        BP = BPContract(_bp);
+    }
+
+    function setBpEnabled(bool _enabled) external onlyOwner {
+        bpEnabled = _enabled;
+    }
+
+    function setBotProtectionDisableForever() external onlyOwner{
+        require(BPDisabledForever == false);
+        BPDisabledForever = true;
+    }
+
+    function _transfer(address sender, address recipient, uint256 amount ) internal virtual override {
+        require(!blacklistSell[sender] , "THE SENDER ADDRESS IS BLACKLISTED");
+        require(!blacklistBuy[recipient], "THE RECEIVER ADDRESS IS BLACKLISTED");
+
+        if (bpEnabled && !BPDisabledForever){
+            BP.protect(sender, recipient, amount); 
+        }
+        
+        uint256 transferFeeRate = recipient == uniswapV2Pair
             ? sellFeeRate
             : (sender == uniswapV2Pair ? buyFeeRate : 0);
 
         if (
             transferFeeRate > 0 &&
             sender != address(this) &&
-            sender != burnAddress &&
+            sender != devBurnAddress &&
             sender != mAdrress &&
             sender != owner() &&
             recipient != address(this) &&
-            recipient != burnAddress && 
+            recipient != devBurnAddress && 
             recipient != mAdrress && 
             recipient != owner()
         ) {
             uint256 _fee = amount.mul(transferFeeRate).div(100);
-            super._transfer(sender, burnAddress, _fee);
+            super._transfer(sender, devBurnAddress, _fee);
             amount = amount.sub(_fee);
         }
 
         super._transfer(sender, recipient, amount);
-    }
-    
-    function mint(address _to, uint256 _amount) public onlyOwner {
-        _mint(_to, _amount);
     }
 
     function setMAdrress(address _mAdrress) external onlyOwner {
         mAdrress = _mAdrress;
     }
     
-    function setBurnAdrress(address _bAdrress) external onlyOwner {
-        burnAddress = _bAdrress;
+    function setDevBurnAdrress(address _bAdrress) external onlyOwner {
+        devBurnAddress = _bAdrress;
     }
     
     function setTransferFeeRate(uint256 _sellFeeRate, uint256 _buyFeeRate) public onlyOwner {
+        require(_sellFeeRate <= maxFeeRate && _buyFeeRate <= maxFeeRate, "INVALID FEE RATE");
         sellFeeRate = _sellFeeRate;
         buyFeeRate = _buyFeeRate;
     }
     
     function battleReward(address winner, uint256 reward) external returns (bool){
         require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(playToEarnReward != monsterBattleMaxAmount, "OUT OF REWARD");
+        require(playToEarnReward != playToEarnMaxAmount, "OUT OF REWARD");
         require(winner != address(0), "INVALID ADDRESS");
         require(reward > 0, "INVALID REWARD");
 
         playToEarnReward = playToEarnReward.add(reward);
-        if (playToEarnReward <= monsterBattleMaxAmount) _mint(winner, reward);
+        if (playToEarnReward <= playToEarnMaxAmount) _mint(winner, reward);
         else {
-            uint256 availableReward = playToEarnReward.sub(monsterBattleMaxAmount);
+            uint256 availableReward = playToEarnReward.sub(playToEarnMaxAmount);
             _mint(winner, availableReward);
-            playToEarnReward = monsterBattleMaxAmount;
-        }
-        return true;
-    }
-	
-	function farmingReward(address recipient, uint256 amount) external returns (bool) {
-        require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != farmingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
-
-        farmReward = farmReward.add(amount);
-        if (farmReward <= farmingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = farmReward.sub(farmingMaxAmount);
-            _mint(recipient, availableReward);
-            farmReward = farmingMaxAmount;
+            playToEarnReward = playToEarnMaxAmount;
         }
         return true;
     }
     
-    function trainingAmount(address recipient, uint256 amount) external returns (bool) {
-        require(msg.sender == mAdrress, "CALLER IS INVALID");
-        require(amount != trainingMaxAmount, "OUT OF AMOUNT");
-        require(recipient != address(0), "0X IS NOT ACCEPTED HERE");
-        require(amount > 0, "INVALID AMOUNT");
+    function multiBlacklistSell(address[] memory addresses) external onlyOwner {
 
-        trainReward = trainReward.add(amount);
-        if (trainReward <= trainingMaxAmount) _mint(recipient, amount);
-        else {
-            uint256 availableReward = trainReward.sub(trainingMaxAmount);
-            _mint(recipient, availableReward);
-            trainReward = trainingMaxAmount;
+        for (uint256 i = 0; i < addresses.length; i++) {
+            require(addresses[i] != uniswapV2Pair, "CAN'T BLACKLIST PAIR ADDRESS");
+            blacklistSell[addresses[i]] = true;
         }
-        return true;
+
+    }
+    
+    function multiBlacklistBuy(address[] memory addresses) external onlyOwner {
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            require(addresses[i] != uniswapV2Pair, "CAN'T BLACKLIST PAIR ADDRESS");
+            blacklistBuy[addresses[i]] = true;
+        }
+
+    }
+
+    function multiRemoveFromBlacklistSell(address[] memory addresses) external onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            blacklistSell[addresses[i]] = false;
+        }
+    }
+    
+    function multiRemoveFromBlacklistBuy(address[] memory addresses) external onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            blacklistBuy[addresses[i]] = false;
+        }
     }
 }
