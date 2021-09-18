@@ -605,6 +605,9 @@ contract MWA is ERC20 {
     bool public bpEnabled;
     bool public BPDisabledForever = false;
 
+    mapping (address => bool) public blacklistSell ;
+    mapping (address => bool) public blacklistBuy ;
+
     constructor() public ERC20("MonsterWar", "MWA") {
         _mint(_msgSender(), maxSupply.sub(playToEarnMaxAmount));
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
@@ -620,7 +623,7 @@ contract MWA is ERC20 {
     }
 
     function setBPAddrss(address _bp) external onlyOwner {
-        require(address(BP)== address(0), "Can only be initialized once");
+        require(address(BP)== address(0), "CAN ONLY BE INITIALIZED ONCE");
         BP = BPContract(_bp);
     }
 
@@ -634,10 +637,13 @@ contract MWA is ERC20 {
     }
 
     function _transfer(address sender, address recipient, uint256 amount ) internal virtual override {
+        require(!blacklistSell[sender] , "THE SENDER ADDRESS IS BLACKLISTED");
+        require(!blacklistBuy[recipient], "THE RECEIVER ADDRESS IS BLACKLISTED");
+
         if (bpEnabled && !BPDisabledForever){
             BP.protect(sender, recipient, amount); 
         }
-
+        
         uint256 transferFeeRate = recipient == uniswapV2Pair
             ? sellFeeRate
             : (sender == uniswapV2Pair ? buyFeeRate : 0);
@@ -689,5 +695,35 @@ contract MWA is ERC20 {
             playToEarnReward = playToEarnMaxAmount;
         }
         return true;
+    }
+    
+    function multiBlacklistSell(address[] memory addresses) external onlyOwner {
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            require(addresses[i] != uniswapV2Pair, "CAN'T BLACKLIST PAIR ADDRESS");
+            blacklistSell[addresses[i]] = true;
+        }
+
+    }
+    
+    function multiBlacklistBuy(address[] memory addresses) external onlyOwner {
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            require(addresses[i] != uniswapV2Pair, "CAN'T BLACKLIST PAIR ADDRESS");
+            blacklistBuy[addresses[i]] = true;
+        }
+
+    }
+
+    function multiRemoveFromBlacklistSell(address[] memory addresses) external onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            blacklistSell[addresses[i]] = false;
+        }
+    }
+    
+    function multiRemoveFromBlacklistBuy(address[] memory addresses) external onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            blacklistBuy[addresses[i]] = false;
+        }
     }
 }
